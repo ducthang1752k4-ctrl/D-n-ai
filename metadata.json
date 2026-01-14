@@ -1,0 +1,7 @@
+{
+  "name": "LinguaAI - Personalized English Tutor",
+  "description": "An advanced AI-powered English learning application featuring Shadowing, Pronunciation Analysis, AI Tutoring, and Personalized Analytics using Google Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

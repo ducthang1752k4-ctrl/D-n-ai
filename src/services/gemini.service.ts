@@ -43,39 +43,43 @@ export class GeminiService {
       4. general_feedback: A supportive and constructive comment.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'audio/wav', data: audioBase64 } },
-          { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            score: { type: Type.INTEGER },
-            phoneme_feedback: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  word: { type: Type.STRING },
-                  expected_phoneme: { type: Type.STRING },
-                  tip: { type: Type.STRING }
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+          parts: [
+            { inlineData: { mimeType: 'audio/wav', data: audioBase64 } },
+            { text: prompt }
+          ]
+        },
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              score: { type: Type.INTEGER },
+              phoneme_feedback: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    word: { type: Type.STRING },
+                    expected_phoneme: { type: Type.STRING },
+                    tip: { type: Type.STRING }
+                  }
                 }
-              }
-            },
-            intonation_comment: { type: Type.STRING },
-            general_feedback: { type: Type.STRING }
+              },
+              intonation_comment: { type: Type.STRING },
+              general_feedback: { type: Type.STRING }
+            }
           }
         }
-      }
-    });
-
-    return JSON.parse(response.text || '{}');
+      });
+      return JSON.parse(response.text || '{}');
+    } catch (e) {
+      console.error("Pronunciation Analysis Error", e);
+      return { score: 0, phoneme_feedback: [], intonation_comment: "Could not analyze.", general_feedback: "Please try again." };
+    }
   }
 
   async chatWithTutor(message: string, history: any[], useSearch: boolean = false): Promise<string> {
@@ -87,8 +91,6 @@ export class GeminiService {
       If the user asks about real-time events, news, or factual data, use the search tool if enabled.
     `;
 
-    // Convert history to compatible format if needed, simplistic approach for now
-    // In a real app, map {role, parts} correctly.
     const contents = [...history, { role: 'user', parts: [{ text: message }] }];
 
     const config: any = {
@@ -164,7 +166,6 @@ export class GeminiService {
   }
 
   async generateCurriculum(userStats: SkillData[]): Promise<any> {
-    // Format the stats for the prompt
     const statsDescription = userStats
       .map(stat => `${stat.axis}: ${stat.value}/100`)
       .join(', ');
@@ -191,30 +192,36 @@ export class GeminiService {
       }
     `;
 
-     const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: { 
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            plan: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  duration: { type: Type.STRING },
-                  focus: { type: Type.STRING }
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: { 
+          maxOutputTokens: 1000,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              plan: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    duration: { type: Type.STRING },
+                    focus: { type: Type.STRING }
+                  }
                 }
               }
             }
           }
         }
-      }
-    });
-    return JSON.parse(response.text || '{ "plan": [] }');
+      });
+      return JSON.parse(response.text || '{ "plan": [] }');
+    } catch (e) {
+      console.error("Generate Curriculum Error", e);
+      return { plan: [] };
+    }
   }
 
   async generateReadingPractice(part: 'Part 5' | 'Part 7'): Promise<any> {
@@ -260,34 +267,40 @@ export class GeminiService {
       `;
     }
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            passage: { type: Type.STRING, nullable: true },
-            questions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.INTEGER },
-                  questionText: { type: Type.STRING },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  correctIndex: { type: Type.INTEGER },
-                  explanation: { type: Type.STRING }
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              passage: { type: Type.STRING, nullable: true },
+              questions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.INTEGER },
+                    questionText: { type: Type.STRING },
+                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    correctIndex: { type: Type.INTEGER },
+                    explanation: { type: Type.STRING }
+                  }
                 }
               }
             }
           }
         }
-      }
-    });
+      });
 
-    return JSON.parse(response.text || '{}');
+      return JSON.parse(response.text || '{}');
+    } catch (e) {
+      console.error("Generate Reading Error", e);
+      return { questions: [] };
+    }
   }
 
   async generateReadingByTopic(topic: string, level: string): Promise<any> {
@@ -313,34 +326,40 @@ export class GeminiService {
       }
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            passage: { type: Type.STRING },
-            questions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.INTEGER },
-                  questionText: { type: Type.STRING },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  correctIndex: { type: Type.INTEGER },
-                  explanation: { type: Type.STRING }
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              passage: { type: Type.STRING },
+              questions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.INTEGER },
+                    questionText: { type: Type.STRING },
+                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    correctIndex: { type: Type.INTEGER },
+                    explanation: { type: Type.STRING }
+                  }
                 }
               }
             }
           }
         }
-      }
-    });
+      });
 
-    return JSON.parse(response.text || '{}');
+      return JSON.parse(response.text || '{}');
+    } catch (e) {
+      console.error("Reading Topic Error", e);
+      return { questions: [] };
+    }
   }
 
   async generateGrammarLesson(topic: string): Promise<any> {
@@ -356,39 +375,45 @@ export class GeminiService {
       4. situations: A list of specific contexts or situations where this is commonly used.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            purpose: { type: Type.STRING },
-            structures: {
-              type: Type.OBJECT,
-              properties: {
-                affirmative: {
-                  type: Type.OBJECT,
-                  properties: { formula: { type: Type.STRING }, example: { type: Type.STRING } }
-                },
-                negative: {
-                  type: Type.OBJECT,
-                  properties: { formula: { type: Type.STRING }, example: { type: Type.STRING } }
-                },
-                interrogative: {
-                  type: Type.OBJECT,
-                  properties: { formula: { type: Type.STRING }, example: { type: Type.STRING } }
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          maxOutputTokens: 1500,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              purpose: { type: Type.STRING },
+              structures: {
+                type: Type.OBJECT,
+                properties: {
+                  affirmative: {
+                    type: Type.OBJECT,
+                    properties: { formula: { type: Type.STRING }, example: { type: Type.STRING } }
+                  },
+                  negative: {
+                    type: Type.OBJECT,
+                    properties: { formula: { type: Type.STRING }, example: { type: Type.STRING } }
+                  },
+                  interrogative: {
+                    type: Type.OBJECT,
+                    properties: { formula: { type: Type.STRING }, example: { type: Type.STRING } }
+                  }
                 }
-              }
-            },
-            situations: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              situations: { type: Type.ARRAY, items: { type: Type.STRING } }
+            }
           }
         }
-      }
-    });
-    
-    return JSON.parse(response.text || '{}');
+      });
+      
+      return JSON.parse(response.text || '{}');
+    } catch (e) {
+      console.error("Grammar Gen Error", e);
+      return null;
+    }
   }
 }
